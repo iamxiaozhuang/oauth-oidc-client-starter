@@ -1,0 +1,16 @@
+plugins {
+    id 'org.springframework.boot' version '3.5.9'
+    id 'application'
+}
+
+description = 'Spring Cloud Gateway BFF service that uses oauth-oidc-client-starter.'
+
+dependencies {
+    implementation project(':oauth-oidc-client-starter')
+    implementation "org.springframework.cloud:spring-cloud-starter-gateway-server-webflux:${springCloudGatewayVersion}"
+    implementation "org.springframework.boot:spring-boot-starter-security:${springBootVersion}"
+}
+
+application {
+    mainClass = 'io.github.oidcclient.gateway.GatewayServiceApplication'
+}

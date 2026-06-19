@@ -1,0 +1,14 @@
+plugins {
+    id 'org.springframework.boot' version '3.5.9'
+    id 'application'
+}
+
+description = 'Internal OAuth2/OIDC authorization service for local demos.'
+
+dependencies {
+    implementation "org.springframework.boot:spring-boot-starter-oauth2-authorization-server:${springBootVersion}"
+}
+
+application {
+    mainClass = 'io.github.oidcclient.authservice.AuthServiceApplication'
+}

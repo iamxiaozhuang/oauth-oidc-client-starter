@@ -1,0 +1,43 @@
+server:
+  port: 9000
+
+spring:
+  application:
+    name: auth-service
+  security:
+    oauth2:
+      authorizationserver:
+        issuer: http://localhost:9000
+        client:
+          oauth-oidc-client:
+            registration:
+              client-id: oauth-oidc-client
+              client-secret: "{noop}oauth-oidc-client-secret"
+              client-authentication-methods:
+                - client_secret_basic
+              authorization-grant-types:
+                - authorization_code
+                - refresh_token
+              redirect-uris:
+                - http://localhost:5173/oauth/callback
+              scopes:
+                - openid
+                - profile
+                - email
+                - business.read
+            require-proof-key: true
+            require-authorization-consent: false
+            token:
+              access-token-time-to-live: 10m
+              refresh-token-time-to-live: 8h
+              reuse-refresh-tokens: false
+          business-service:
+            registration:
+              client-id: business-service
+              client-secret: "{noop}business-secret"
+              client-authentication-methods:
+                - client_secret_basic
+              authorization-grant-types:
+                - client_credentials
+              scopes:
+                - business.read

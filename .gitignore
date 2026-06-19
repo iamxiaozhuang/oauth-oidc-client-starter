@@ -1,0 +1,17 @@
+.gradle/
+build/
+bin/
+out/
+target/
+
+node_modules/
+dist/
+
+.idea/
+.vscode/
+
+*.log
+*.tmp
+
+AGENTS.md
+需求.txt

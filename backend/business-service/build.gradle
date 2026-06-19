@@ -1,0 +1,16 @@
+plugins {
+    id 'org.springframework.boot' version '3.5.9'
+    id 'application'
+}
+
+description = 'Business Resource Server demo behind the Gateway BFF.'
+
+dependencies {
+    implementation "org.springframework.boot:spring-boot-starter-web:${springBootVersion}"
+    implementation "org.springframework.boot:spring-boot-starter-security:${springBootVersion}"
+    implementation "org.springframework.boot:spring-boot-starter-oauth2-resource-server:${springBootVersion}"
+}
+
+application {
+    mainClass = 'io.github.oidcclient.business.BusinessServiceApplication'
+}

@@ -1,0 +1,42 @@
+import org.gradle.api.tasks.wrapper.Wrapper
+
+allprojects {
+    group = 'io.github.oidcclient'
+    version = '0.1.0-SNAPSHOT'
+
+    ext {
+        springBootVersion = '3.5.9'
+        springFrameworkVersion = '6.2.15'
+        springCloudGatewayVersion = '4.3.0'
+    }
+
+    repositories {
+        mavenCentral()
+    }
+}
+
+subprojects {
+    apply plugin: 'java-library'
+
+    java {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+        options.release = 21
+    }
+
+    tasks.register('wrapper') {
+        group = 'Build Setup'
+        description = 'Delegates to the root Gradle wrapper task.'
+        dependsOn rootProject.tasks.named('wrapper')
+    }
+}
+
+tasks.named('wrapper', Wrapper).configure {
+    gradleVersion = '8.14.3'
+    distributionType = Wrapper.DistributionType.BIN
+    validateDistributionUrl = false
+}

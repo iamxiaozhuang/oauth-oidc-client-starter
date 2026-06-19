@@ -1,0 +1,43 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway-service
+  main:
+    web-application-type: reactive
+  data:
+    redis:
+      url: redis://localhost:6379
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: business-service
+              uri: http://localhost:8081
+              predicates:
+                - Path=/api/**
+
+oauth-oidc-client:
+  authorization-endpoint: http://localhost:9000/oauth2/authorize
+  token-endpoint: http://localhost:9000/oauth2/token
+  user-info-endpoint: http://localhost:9000/userinfo
+  client-id: oauth-oidc-client
+  client-secret: oauth-oidc-client-secret
+  callback-path: /oauth/callback
+  login-success-path: /auth/init-page
+  logout-success-path: /logout
+  target-param: target
+  original-url-param: target
+  allowed-redirect-hosts:
+    - localhost:5173
+  protected-path-prefixes:
+    - /
+  public-path-prefixes:
+    - /oauth/
+  secure-cookie: false
+  same-site: Lax
+  redis-session-ttl: 12h
+  redis:
+    key-prefix: oauth-oidc-client:gateway

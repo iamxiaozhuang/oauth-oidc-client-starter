@@ -1,0 +1,6 @@
+rootProject.name = 'oauth-oidc-client-starter'
+
+include 'oauth-oidc-client-starter'
+include 'auth-service'
+include 'gateway-service'
+include 'business-service'
