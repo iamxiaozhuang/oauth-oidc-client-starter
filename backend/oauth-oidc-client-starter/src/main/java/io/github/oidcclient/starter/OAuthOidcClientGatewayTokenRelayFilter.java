@@ -9,6 +9,7 @@ import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
@@ -104,9 +105,46 @@ public class OAuthOidcClientGatewayTokenRelayFilter implements GlobalFilter, Ord
     }
 
     private URI loginUri(ServerWebExchange exchange) {
-        String path = exchange.getRequest().getURI().getRawPath();
-        String query = exchange.getRequest().getURI().getRawQuery();
-        String target = query == null || query.isBlank() ? path : path + "?" + query;
+        String target = loginTarget(exchange.getRequest());
         return FormCodec.appendQuery(URI.create(LOGIN_PATH), Map.of(properties.getOriginalUrlParam(), target));
+    }
+
+    static String loginTarget(ServerHttpRequest request) {
+        URI requestUri = request.getURI();
+        String referer = request.getHeaders().getFirst(HttpHeaders.REFERER);
+        if (referer != null && !referer.isBlank()) {
+            URI refererUri = URI.create(referer);
+            if (sameOrigin(requestUri, refererUri)) {
+                return pathWithQuery(refererUri);
+            }
+        }
+        return pathWithQuery(requestUri);
+    }
+
+    private static boolean sameOrigin(URI requestUri, URI refererUri) {
+        return equalsIgnoreCase(requestUri.getScheme(), refererUri.getScheme())
+                && equalsIgnoreCase(requestUri.getHost(), refererUri.getHost())
+                && normalizedPort(requestUri) == normalizedPort(refererUri);
+    }
+
+    private static boolean equalsIgnoreCase(String left, String right) {
+        if (left == null) {
+            return right == null;
+        }
+        return left.equalsIgnoreCase(right);
+    }
+
+    private static int normalizedPort(URI uri) {
+        if (uri.getPort() > 0) {
+            return uri.getPort();
+        }
+        return "https".equalsIgnoreCase(uri.getScheme()) ? 443 : 80;
+    }
+
+    private static String pathWithQuery(URI uri) {
+        String path = uri.getRawPath();
+        String safePath = path == null || path.isBlank() ? "/" : path;
+        String query = uri.getRawQuery();
+        return query == null || query.isBlank() ? safePath : safePath + "?" + query;
     }
 }

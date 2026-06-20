@@ -13,4 +13,5 @@ dependencies {
     testImplementation "org.springframework.boot:spring-boot-starter-test:${springBootVersion}"
     testImplementation "org.springframework.boot:spring-boot-starter-web:${springBootVersion}"
     testImplementation "org.springframework.boot:spring-boot-starter-webflux:${springBootVersion}"
+    testImplementation "org.springframework.cloud:spring-cloud-starter-gateway-server-webflux:${springCloudGatewayVersion}"
 }

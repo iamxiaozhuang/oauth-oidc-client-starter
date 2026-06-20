@@ -7,6 +7,8 @@ description = 'Internal OAuth2/OIDC authorization service for local demos.'
 
 dependencies {
     implementation "org.springframework.boot:spring-boot-starter-oauth2-authorization-server:${springBootVersion}"
+
+    testImplementation "org.springframework.boot:spring-boot-starter-test:${springBootVersion}"
 }
 
 application {

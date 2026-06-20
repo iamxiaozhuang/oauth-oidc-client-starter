@@ -38,11 +38,11 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
 
 function redirectToLogin(loginPath?: string) {
   if (loginPath) {
-    window.location.replace(`${API_BASE_URL}${loginPath}`);
+    window.location.replace(loginPath);
     return;
   }
   const target = `${window.location.pathname}${window.location.search}`;
-  window.location.replace(`${API_BASE_URL}/oauth/login?target=${encodeURIComponent(target)}`);
+  window.location.replace(`/oauth/login?target=${encodeURIComponent(target)}`);
 }
 
 function LoginInitPage() {

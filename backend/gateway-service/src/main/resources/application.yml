@@ -39,5 +39,3 @@ oauth-oidc-client:
   secure-cookie: false
   same-site: Lax
   redis-session-ttl: 12h
-  redis:
-    key-prefix: oauth-oidc-client:gateway
