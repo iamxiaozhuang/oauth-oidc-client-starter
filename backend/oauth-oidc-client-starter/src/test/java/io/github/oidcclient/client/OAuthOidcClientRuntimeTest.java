@@ -3,8 +3,10 @@ package io.github.oidcclient.client;
 import org.junit.jupiter.api.Test;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
 
@@ -77,6 +79,33 @@ class OAuthOidcClientRuntimeTest {
                 .isEqualTo("https://app-a.example.com/auth/init-page?target=%2Fdashboard%3Ftab%3Dhome");
     }
 
+    @Test
+    void callbackRejectsIdTokenWithMismatchedNonce() {
+        CapturingAuthAdapter authAdapter = new CapturingAuthAdapter("wrong-nonce");
+        CapturingAuthorizationRequestStore authorizationRequests = new CapturingAuthorizationRequestStore();
+        CapturingSessionStore sessions = new CapturingSessionStore(null);
+        OAuthOidcClientRuntime runtime = new OAuthOidcClientRuntime(
+                authAdapter,
+                authorizationRequests,
+                sessions,
+                Duration.ofSeconds(60)
+        );
+        URI redirectUri = URI.create("https://app-a.example.com/oauth/callback");
+        URI originalOrigin = URI.create("https://app-a.example.com");
+
+        runtime.beginLogin(
+                redirectUri,
+                originalOrigin,
+                "/dashboard",
+                URI.create("https://app-a.example.com/auth/init-page")
+        );
+
+        assertThatThrownBy(() -> runtime.completeCallback("code", "state", redirectUri, originalOrigin, "target"))
+                .isInstanceOf(OAuthOidcClientException.class)
+                .hasMessageContaining("nonce");
+        assertThat(sessions.saved).isNull();
+    }
+
     private static BffSession sessionWithToken(TokenResponse token) {
         Instant now = Instant.now();
         return new BffSession(
@@ -89,11 +118,15 @@ class OAuthOidcClientRuntimeTest {
     }
 
     private static TokenResponse token(String accessToken, String refreshToken, Instant expiresAt) {
+        return token(accessToken, refreshToken, expiresAt, "nonce");
+    }
+
+    private static TokenResponse token(String accessToken, String refreshToken, Instant expiresAt, String nonce) {
         return new TokenResponse(
                 accessToken,
                 "Bearer",
                 refreshToken,
-                null,
+                idToken(nonce),
                 "openid profile",
                 expiresAt,
                 Map.of("access_token", accessToken)
@@ -101,7 +134,16 @@ class OAuthOidcClientRuntimeTest {
     }
 
     private static final class CapturingAuthAdapter implements AuthAdapter {
+        private final String tokenNonce;
         private String refreshedWith;
+
+        private CapturingAuthAdapter() {
+            this("nonce");
+        }
+
+        private CapturingAuthAdapter(String tokenNonce) {
+            this.tokenNonce = tokenNonce;
+        }
 
         @Override
         public AuthorizationRequest createAuthorizationRequest(URI redirectUri, URI originalOrigin, String originalPath, URI initPageUri) {
@@ -109,6 +151,7 @@ class OAuthOidcClientRuntimeTest {
                     URI.create("http://localhost/login"),
                     redirectUri,
                     "state",
+                    "nonce",
                     "verifier",
                     "challenge",
                     originalOrigin,
@@ -119,7 +162,7 @@ class OAuthOidcClientRuntimeTest {
 
         @Override
         public TokenResponse exchangeCode(String code, String codeVerifier, URI redirectUri) {
-            return token("exchanged-access-token", "refresh-token", Instant.now().plusSeconds(600));
+            return token("exchanged-access-token", "refresh-token", Instant.now().plusSeconds(600), tokenNonce);
         }
 
         @Override
@@ -132,6 +175,18 @@ class OAuthOidcClientRuntimeTest {
         public UserInfo fetchUserInfo(String accessToken) {
             return new UserInfo("user-1", "Demo User", "user@example.com", Map.of("sub", "user-1"));
         }
+    }
+
+    private static String idToken(String nonce) {
+        String header = base64Url("{\"alg\":\"none\"}");
+        String payload = base64Url("{\"sub\":\"user-1\",\"nonce\":\"" + nonce + "\"}");
+        return header + "." + payload + ".";
+    }
+
+    private static String base64Url(String value) {
+        return Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(value.getBytes(StandardCharsets.UTF_8));
     }
 
     private static final class CapturingSessionStore implements BffSessionStore {

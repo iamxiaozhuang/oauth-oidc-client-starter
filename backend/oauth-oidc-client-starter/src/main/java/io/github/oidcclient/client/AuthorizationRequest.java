@@ -6,6 +6,7 @@ public final class AuthorizationRequest {
     private final URI authorizationUri;
     private final URI redirectUri;
     private final String state;
+    private final String nonce;
     private final String codeVerifier;
     private final String codeChallenge;
     private final URI originalOrigin;
@@ -16,6 +17,7 @@ public final class AuthorizationRequest {
             URI authorizationUri,
             URI redirectUri,
             String state,
+            String nonce,
             String codeVerifier,
             String codeChallenge,
             URI originalOrigin,
@@ -25,6 +27,7 @@ public final class AuthorizationRequest {
         this.authorizationUri = authorizationUri;
         this.redirectUri = redirectUri;
         this.state = state;
+        this.nonce = nonce;
         this.codeVerifier = codeVerifier;
         this.codeChallenge = codeChallenge;
         this.originalOrigin = originalOrigin;
@@ -42,6 +45,10 @@ public final class AuthorizationRequest {
 
     public String state() {
         return state;
+    }
+
+    public String nonce() {
+        return nonce;
     }
 
     public String codeVerifier() {

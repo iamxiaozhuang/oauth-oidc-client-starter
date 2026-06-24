@@ -46,6 +46,21 @@ class OAuthOidcClientClientTest {
         assertThat(captured.body).contains("redirect_uri=http%3A%2F%2Fapp.example.test%2Foauth%2Fcallback");
     }
 
+    @Test
+    void authorizationRequestStoresNonceAndSendsItToProvider() {
+        OAuthOidcClientClient client = new OAuthOidcClientClient(config(URI.create("http://localhost:9000/oauth2/token")));
+
+        AuthorizationRequest request = client.createAuthorizationRequest(
+                URI.create("https://app.example.test/oauth/callback"),
+                URI.create("https://app.example.test"),
+                "/dashboard",
+                URI.create("https://app.example.test/auth/init-page")
+        );
+
+        assertThat(request.nonce()).isNotBlank();
+        assertThat(request.authorizationUri().toString()).contains("nonce=" + request.nonce());
+    }
+
     private URI tokenEndpoint() {
         return URI.create("http://localhost:" + server.getAddress().getPort() + "/oauth2/token");
     }

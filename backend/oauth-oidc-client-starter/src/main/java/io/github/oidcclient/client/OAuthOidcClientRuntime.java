@@ -1,7 +1,8 @@
 package io.github.oidcclient.client;
 
-import io.github.oidcclient.client.internal.Pkce;
 import io.github.oidcclient.client.internal.FormCodec;
+import io.github.oidcclient.client.internal.IdTokenClaims;
+import io.github.oidcclient.client.internal.Pkce;
 
 import java.net.URI;
 import java.time.Duration;
@@ -31,7 +32,7 @@ public final class OAuthOidcClientRuntime {
     }
 
     public URI beginLogin(URI redirectUri, URI originalOrigin, String originalPath, URI initPageUri) {
-        // 这里创建并保存一次性授权请求，state 用于防 CSRF，codeVerifier 用于 PKCE 换 token。
+        // 这里创建并保存一次性授权请求，state 用于防 CSRF，nonce 用于校验 id_token，codeVerifier 用于 PKCE 换 token。
         AuthorizationRequest request = authAdapter.createAuthorizationRequest(redirectUri, originalOrigin, originalPath, initPageUri);
         authorizationRequests.save(request);
         return request.authorizationUri();
@@ -45,6 +46,7 @@ public final class OAuthOidcClientRuntime {
 
         // code_verifier 从后端取出并发送到 token endpoint，浏览器全程不可见。
         TokenResponse token = authAdapter.exchangeCode(code, request.codeVerifier(), request.redirectUri());
+        validateNonce(request, token);
         UserInfo userInfo = authAdapter.fetchUserInfo(token.accessToken());
         BffSession session = new BffSession(
                 Pkce.randomUrlSafe(32),
@@ -113,6 +115,13 @@ public final class OAuthOidcClientRuntime {
         }
         if (!request.originalOrigin().equals(currentOrigin)) {
             throw new OAuthOidcClientException("callback origin does not match authorization request");
+        }
+    }
+
+    private static void validateNonce(AuthorizationRequest request, TokenResponse token) {
+        Object actualNonce = IdTokenClaims.parsePayload(token.idToken()).get("nonce");
+        if (!Objects.equals(request.nonce(), actualNonce)) {
+            throw new OAuthOidcClientException("id_token nonce does not match authorization request");
         }
     }
 

@@ -48,8 +48,9 @@ public final class OAuthOidcClientClient implements AuthAdapter {
         if (originalPath == null || originalPath.isBlank()) {
             throw new IllegalArgumentException("originalPath is required");
         }
-        // state 绑定本次登录请求，codeVerifier 留在后端，codeChallenge 发给授权服务器。
+        // state 绑定本次登录请求，nonce 绑定 OIDC id_token，codeVerifier 留在后端。
         String state = Pkce.randomUrlSafe(24);
+        String nonce = Pkce.randomUrlSafe(24);
         String codeVerifier = Pkce.randomUrlSafe(64);
         String codeChallenge = Pkce.challengeS256(codeVerifier);
 
@@ -60,6 +61,7 @@ public final class OAuthOidcClientClient implements AuthAdapter {
         query.put("redirect_uri", redirectUri.toString());
         query.put("scope", String.join(" ", config.scopes()));
         query.put("state", state);
+        query.put("nonce", nonce);
         query.put("code_challenge", codeChallenge);
         query.put("code_challenge_method", "S256");
         config.authorizationParameters().forEach(query::putIfAbsent);
@@ -69,6 +71,7 @@ public final class OAuthOidcClientClient implements AuthAdapter {
                 authorizationUri,
                 redirectUri,
                 state,
+                nonce,
                 codeVerifier,
                 codeChallenge,
                 originalOrigin,

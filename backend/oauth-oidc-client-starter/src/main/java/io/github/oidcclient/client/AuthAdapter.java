@@ -3,7 +3,7 @@ package io.github.oidcclient.client;
 import java.net.URI;
 
 public interface AuthAdapter {
-    // 创建授权请求并返回 provider 授权地址；实现方必须同时生成 state 和 code_verifier。
+    // 创建授权请求并返回 provider 授权地址；实现方必须同时生成 state、nonce 和 code_verifier。
     AuthorizationRequest createAuthorizationRequest(URI redirectUri, URI originalOrigin, String originalPath, URI initPageUri);
 
     // 使用授权码和后端保存的 code_verifier 换 token。
