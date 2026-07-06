@@ -7,6 +7,8 @@ import io.github.oidcclient.client.OAuthOidcClientConfig;
 import io.github.oidcclient.client.OAuthOidcClientRuntime;
 import io.github.oidcclient.client.RedisAuthorizationRequestStore;
 import io.github.oidcclient.client.RedisBffSessionStore;
+import io.github.oidcclient.client.RedisRefreshTokenLock;
+import io.github.oidcclient.client.RefreshTokenLock;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,15 +101,33 @@ public class OAuthOidcClientAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnBean(StringRedisTemplate.class)
+    @ConditionalOnMissingBean
+    RefreshTokenLock redisRefreshTokenLock(
+            StringRedisTemplate redis,
+            OAuthOidcClientProperties properties
+    ) {
+        // 多 Gateway 实例共享同一把 Redis 锁，防止同一 refresh token 被并发使用。
+        return new RedisRefreshTokenLock(
+                redis,
+                properties.getRedis().getKeyPrefix(),
+                properties.getRefreshLockTtl(),
+                properties.getRefreshLockWaitTimeout(),
+                properties.getRefreshLockRetryInterval()
+        );
+    }
+
+    @Bean
     @ConditionalOnMissingBean
     OAuthOidcClientRuntime OAuthOidcClientRuntime(
             OAuthOidcClientClient client,
             AuthorizationRequestStore authorizationRequests,
             BffSessionStore sessions,
+            RefreshTokenLock refreshTokenLock,
             OAuthOidcClientProperties properties
     ) {
         // Runtime 串联登录、回调、会话、刷新和注销，是 starter 暴露端点背后的核心协调层。
-        return new OAuthOidcClientRuntime(client, authorizationRequests, sessions, properties.getRefreshSkew());
+        return new OAuthOidcClientRuntime(client, authorizationRequests, sessions, properties.getRefreshSkew(), refreshTokenLock);
     }
 
     @Bean

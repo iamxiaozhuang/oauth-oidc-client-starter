@@ -93,15 +93,40 @@ The current implementation includes:
 - Login success redirect to an initialization page.
 - Gateway access-token relay to downstream APIs.
 - Access-token refresh.
+- Redis-backed distributed refresh locking for multi-instance Gateway deployments.
+- Fail-fast configuration validation.
+- Maven artifact publication for starter-style usage.
 - Basic logout.
 
 Known gaps still on the roadmap:
 
 - Issuer discovery from `issuer-uri`.
 - Dedicated token store abstraction separate from the BFF session.
-- Distributed refresh locking for multi-instance Gateway deployments.
 - Route-level authentication and token-relay configuration.
 - Additional audience, scope, and role authorization examples in `business-service`.
+
+## Starter Dependency
+
+Use the starter from a Gateway application as a normal Maven dependency:
+
+```gradle
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation "io.github.oidcclient:oauth-oidc-client-starter:1.0.0"
+}
+```
+
+When validating this repository against a locally published starter artifact,
+run:
+
+```powershell
+cd D:\CodexProjects\spring-gateway-oidc-client-starter\backend
+.\gradlew.bat :oauth-oidc-client-starter:publishToMavenLocal --no-daemon
+.\gradlew.bat clean build -PusePublishedStarter=true --no-daemon
+```
 
 ## Local Demo
 

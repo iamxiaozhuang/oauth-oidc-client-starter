@@ -50,6 +50,12 @@ must arrive on the saved origin and redirect URI before the code is
 exchanged. After callback, the browser is redirected to
 `originalOrigin + login-success-path?target=originalPath`.
 
+Access-token refresh is guarded by a Redis refresh lock keyed by BFF session
+id, so multiple Gateway instances do not use the same refresh token
+concurrently. The demo exposes the lock timing through
+`oauth-oidc-client.refresh-lock-ttl`, `refresh-lock-wait-timeout`, and
+`refresh-lock-retry-interval`.
+
 The demo authorization server registers those client values with Spring Boot's
 standard `spring.security.oauth2.authorizationserver.client.*` properties. In a
 real deployment, the starter user configures only the Gateway side; the
@@ -61,6 +67,31 @@ enterprise Authorization Server owns its client registration separately.
 cd D:\CodexProjects\spring-gateway-oidc-client-starter\backend
 .\gradlew.bat clean build --no-daemon
 ```
+
+## Starter Dependency Usage
+
+Applications consume the starter as a normal Maven artifact:
+
+```gradle
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation "io.github.oidcclient:oauth-oidc-client-starter:1.0.0"
+}
+```
+
+For local development, publish the starter to Maven Local first:
+
+```powershell
+cd D:\CodexProjects\spring-gateway-oidc-client-starter\backend
+.\gradlew.bat :oauth-oidc-client-starter:publishToMavenLocal --no-daemon
+.\gradlew.bat clean build -PusePublishedStarter=true --no-daemon
+```
+
+The repository's default build still uses the included starter project so a
+fresh clone can build without first publishing the artifact.
 
 ## Run Locally
 

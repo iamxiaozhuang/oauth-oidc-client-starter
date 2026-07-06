@@ -5,6 +5,8 @@ import io.github.oidcclient.client.BffSessionStore;
 import io.github.oidcclient.client.OAuthOidcClientRuntime;
 import io.github.oidcclient.client.RedisAuthorizationRequestStore;
 import io.github.oidcclient.client.RedisBffSessionStore;
+import io.github.oidcclient.client.RedisRefreshTokenLock;
+import io.github.oidcclient.client.RefreshTokenLock;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.web.servlet.DispatcherServletAutoConfiguration;
@@ -44,8 +46,40 @@ class OAuthOidcClientAutoConfigurationTest {
             assertThat(context).hasSingleBean(BffSessionStore.class);
             assertThat(context).hasSingleBean(RedisAuthorizationRequestStore.class);
             assertThat(context).hasSingleBean(RedisBffSessionStore.class);
+            assertThat(context).hasSingleBean(RefreshTokenLock.class);
+            assertThat(context).hasSingleBean(RedisRefreshTokenLock.class);
             assertThat(context).hasSingleBean(CurrentUserIdArgumentResolver.class);
         });
+    }
+
+    @Test
+    void validationRejectsMissingRequiredEndpoint() {
+        contextRunner
+                .withPropertyValues("oauth-oidc-client.token-endpoint=")
+                .run(context -> assertThat(context).hasFailed());
+    }
+
+    @Test
+    void validationRejectsSameSiteNoneWithoutSecureCookie() {
+        contextRunner
+                .withPropertyValues(
+                        "oauth-oidc-client.same-site=None",
+                        "oauth-oidc-client.secure-cookie=false"
+                )
+                .run(context -> assertThat(context)
+                        .hasFailed()
+                        .getFailure()
+                        .hasMessageContaining("same-site=None requires secure-cookie=true"));
+    }
+
+    @Test
+    void validationRejectsRedirectHostWithScheme() {
+        contextRunner
+                .withPropertyValues("oauth-oidc-client.allowed-redirect-hosts=https://localhost:5173")
+                .run(context -> assertThat(context)
+                        .hasFailed()
+                        .getFailure()
+                        .hasMessageContaining("allowed-redirect-hosts must contain host[:port] values"));
     }
 
 }

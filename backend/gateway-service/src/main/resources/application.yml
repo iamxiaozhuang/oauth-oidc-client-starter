@@ -39,3 +39,6 @@ oauth-oidc-client:
   secure-cookie: false
   same-site: Lax
   redis-session-ttl: 12h
+  refresh-lock-ttl: 30s
+  refresh-lock-wait-timeout: 10s
+  refresh-lock-retry-interval: 100ms

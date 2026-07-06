@@ -6,7 +6,11 @@ plugins {
 description = 'Spring Cloud Gateway BFF service that uses oauth-oidc-client-starter.'
 
 dependencies {
-    implementation project(':oauth-oidc-client-starter')
+    if (providers.gradleProperty('usePublishedStarter').map { it.toBoolean() }.getOrElse(false)) {
+        implementation "io.github.oidcclient:oauth-oidc-client-starter:${version}"
+    } else {
+        implementation project(':oauth-oidc-client-starter')
+    }
     implementation "org.springframework.cloud:spring-cloud-starter-gateway-server-webflux:${springCloudGatewayVersion}"
     implementation "org.springframework.boot:spring-boot-starter-security:${springBootVersion}"
 }

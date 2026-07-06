@@ -9,15 +9,13 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 
 public final class OAuthOidcClientRuntime {
     private final AuthAdapter authAdapter;
     private final AuthorizationRequestStore authorizationRequests;
     private final BffSessionStore sessions;
     private final Duration refreshSkew;
-    // 以 sessionId 为粒度控制刷新并发，避免同一个 refresh token 被多个请求同时使用。
-    private final Map<String, Object> refreshLocks = new ConcurrentHashMap<>();
+    private final RefreshTokenLock refreshTokenLock;
 
     public OAuthOidcClientRuntime(
             AuthAdapter authAdapter,
@@ -25,10 +23,21 @@ public final class OAuthOidcClientRuntime {
             BffSessionStore sessions,
             Duration refreshSkew
     ) {
+        this(authAdapter, authorizationRequests, sessions, refreshSkew, new InMemoryRefreshTokenLock());
+    }
+
+    public OAuthOidcClientRuntime(
+            AuthAdapter authAdapter,
+            AuthorizationRequestStore authorizationRequests,
+            BffSessionStore sessions,
+            Duration refreshSkew,
+            RefreshTokenLock refreshTokenLock
+    ) {
         this.authAdapter = Objects.requireNonNull(authAdapter, "authAdapter is required");
         this.authorizationRequests = Objects.requireNonNull(authorizationRequests, "authorizationRequests is required");
         this.sessions = Objects.requireNonNull(sessions, "sessions is required");
         this.refreshSkew = Objects.requireNonNull(refreshSkew, "refreshSkew is required");
+        this.refreshTokenLock = Objects.requireNonNull(refreshTokenLock, "refreshTokenLock is required");
     }
 
     public URI beginLogin(URI redirectUri, URI originalOrigin, String originalPath, URI initPageUri) {
@@ -82,21 +91,17 @@ public final class OAuthOidcClientRuntime {
             return token;
         }
 
-        Object lock = refreshLocks.computeIfAbsent(sessionId, ignored -> new Object());
-        synchronized (lock) {
-            try {
-                // 加锁后再次读取 session，防止等待锁期间其他线程已经完成刷新。
-                BffSession latest = currentSession(sessionId);
-                if (!shouldRefresh(latest.token())) {
-                    return latest.token();
-                }
-                TokenResponse refreshed = authAdapter.refreshToken(latest.token().refreshToken());
-                BffSession refreshedSession = latest.withToken(refreshed);
-                sessions.save(refreshedSession);
-                return refreshed;
-            } finally {
-                refreshLocks.remove(sessionId, lock);
+        // 以 sessionId 为粒度控制刷新并发；Redis 实现可覆盖多个 Gateway 实例。
+        try (RefreshTokenLock.LockHandle ignored = refreshTokenLock.acquire(sessionId)) {
+            // 加锁后再次读取 session，防止等待锁期间其他实例已经完成刷新。
+            BffSession latest = currentSession(sessionId);
+            if (!shouldRefresh(latest.token())) {
+                return latest.token();
             }
+            TokenResponse refreshed = authAdapter.refreshToken(latest.token().refreshToken());
+            BffSession refreshedSession = latest.withToken(refreshed);
+            sessions.save(refreshedSession);
+            return refreshed;
         }
     }
 

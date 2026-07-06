@@ -9,6 +9,12 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -50,6 +56,45 @@ class OAuthOidcClientRuntimeTest {
         assertThatThrownBy(() -> runtime.currentToken("session-1"))
                 .isInstanceOf(OAuthOidcClientException.class)
                 .hasMessageContaining("refresh token is missing");
+    }
+
+    @Test
+    void currentTokenUsesSharedRefreshLockAcrossRuntimeInstances() throws Exception {
+        BlockingAuthAdapter authAdapter = new BlockingAuthAdapter();
+        CapturingSessionStore sessions = new CapturingSessionStore(sessionWithToken(
+                token("old-access-token", "refresh-token", Instant.now().plusSeconds(20))
+        ));
+        RefreshTokenLock refreshTokenLock = new InMemoryRefreshTokenLock();
+        OAuthOidcClientRuntime firstRuntime = new OAuthOidcClientRuntime(
+                authAdapter,
+                new CapturingAuthorizationRequestStore(),
+                sessions,
+                Duration.ofSeconds(60),
+                refreshTokenLock
+        );
+        OAuthOidcClientRuntime secondRuntime = new OAuthOidcClientRuntime(
+                authAdapter,
+                new CapturingAuthorizationRequestStore(),
+                sessions,
+                Duration.ofSeconds(60),
+                refreshTokenLock
+        );
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Callable<TokenResponse> firstCall = () -> firstRuntime.currentToken("session-1");
+            Callable<TokenResponse> secondCall = () -> secondRuntime.currentToken("session-1");
+            var first = executor.submit(firstCall);
+            assertThat(authAdapter.refreshStarted.await(3, TimeUnit.SECONDS)).isTrue();
+            var second = executor.submit(secondCall);
+            authAdapter.continueRefresh.countDown();
+
+            assertThat(first.get(3, TimeUnit.SECONDS).accessToken()).isEqualTo("new-access-token");
+            assertThat(second.get(3, TimeUnit.SECONDS).accessToken()).isEqualTo("new-access-token");
+            assertThat(authAdapter.refreshCount).hasValue(1);
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     @Test
@@ -177,6 +222,40 @@ class OAuthOidcClientRuntimeTest {
         }
     }
 
+    private static final class BlockingAuthAdapter implements AuthAdapter {
+        private final CountDownLatch refreshStarted = new CountDownLatch(1);
+        private final CountDownLatch continueRefresh = new CountDownLatch(1);
+        private final AtomicInteger refreshCount = new AtomicInteger();
+
+        @Override
+        public AuthorizationRequest createAuthorizationRequest(URI redirectUri, URI originalOrigin, String originalPath, URI initPageUri) {
+            throw new UnsupportedOperationException("not used");
+        }
+
+        @Override
+        public TokenResponse exchangeCode(String code, String codeVerifier, URI redirectUri) {
+            throw new UnsupportedOperationException("not used");
+        }
+
+        @Override
+        public TokenResponse refreshToken(String refreshToken) {
+            refreshCount.incrementAndGet();
+            refreshStarted.countDown();
+            try {
+                assertThat(continueRefresh.await(3, TimeUnit.SECONDS)).isTrue();
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new OAuthOidcClientException("interrupted");
+            }
+            return token("new-access-token", "new-refresh-token", Instant.now().plusSeconds(600));
+        }
+
+        @Override
+        public UserInfo fetchUserInfo(String accessToken) {
+            throw new UnsupportedOperationException("not used");
+        }
+    }
+
     private static String idToken(String nonce) {
         String header = base64Url("{\"alg\":\"none\"}");
         String payload = base64Url("{\"sub\":\"user-1\",\"nonce\":\"" + nonce + "\"}");
@@ -198,13 +277,13 @@ class OAuthOidcClientRuntimeTest {
         }
 
         @Override
-        public void save(BffSession session) {
+        public synchronized void save(BffSession session) {
             this.session = session;
             this.saved = session;
         }
 
         @Override
-        public Optional<BffSession> find(String sessionId) {
+        public synchronized Optional<BffSession> find(String sessionId) {
             if (!"session-1".equals(sessionId)) {
                 return Optional.empty();
             }
@@ -212,7 +291,7 @@ class OAuthOidcClientRuntimeTest {
         }
 
         @Override
-        public void delete(String sessionId) {
+        public synchronized void delete(String sessionId) {
             this.session = null;
         }
     }
