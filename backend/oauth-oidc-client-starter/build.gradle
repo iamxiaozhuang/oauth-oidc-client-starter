@@ -35,7 +35,7 @@ publishing {
             pom {
                 name = 'OAuth2/OIDC Client Starter'
                 description = project.description
-                url = 'https://github.com/oidcclient/oauth-oidc-client-starter'
+                url = 'https://github.com/iamxiaozhuang/oauth-oidc-client-starter'
                 licenses {
                     license {
                         name = 'Apache License, Version 2.0'
@@ -49,10 +49,20 @@ publishing {
                     }
                 }
                 scm {
-                    connection = 'scm:git:https://github.com/oidcclient/oauth-oidc-client-starter.git'
-                    developerConnection = 'scm:git:ssh://git@github.com/oidcclient/oauth-oidc-client-starter.git'
-                    url = 'https://github.com/oidcclient/oauth-oidc-client-starter'
+                    connection = 'scm:git:https://github.com/iamxiaozhuang/oauth-oidc-client-starter.git'
+                    developerConnection = 'scm:git:ssh://git@github.com/iamxiaozhuang/oauth-oidc-client-starter.git'
+                    url = 'https://github.com/iamxiaozhuang/oauth-oidc-client-starter'
                 }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = 'GitHubPackages'
+            url = uri('https://maven.pkg.github.com/iamxiaozhuang/oauth-oidc-client-starter')
+            credentials {
+                username = findProperty('gpr.user') ?: System.getenv('GITHUB_ACTOR') ?: System.getenv('GITHUB_USERNAME')
+                password = findProperty('gpr.key') ?: System.getenv('GITHUB_TOKEN') ?: System.getenv('GITHUB_PACKAGES_TOKEN')
             }
         }
     }

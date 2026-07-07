@@ -112,12 +112,23 @@ Use the starter from a Gateway application as a normal Maven dependency:
 ```gradle
 repositories {
     mavenCentral()
+    maven {
+        url = uri("https://maven.pkg.github.com/iamxiaozhuang/oauth-oidc-client-starter")
+        credentials {
+            username = findProperty("gpr.user") ?: System.getenv("GITHUB_ACTOR")
+            password = findProperty("gpr.key") ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
 }
 
 dependencies {
-    implementation "io.github.oidcclient:oauth-oidc-client-starter:1.0.0"
+    implementation "io.github.oidcclient:oauth-oidc-client-starter:1.0.1"
 }
 ```
+
+GitHub Packages requires authentication for Maven package downloads. Configure
+`gpr.user` and `gpr.key` in your Gradle properties, or set `GITHUB_ACTOR` and a
+GitHub token with `read:packages` access in the environment.
 
 When validating this repository against a locally published starter artifact,
 run:

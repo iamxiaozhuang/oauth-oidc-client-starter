@@ -1,12 +1,14 @@
 name: Release
 
 on:
+  workflow_dispatch:
   push:
     tags:
       - 'v*'
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
   github-release:
@@ -29,6 +31,13 @@ jobs:
       - name: Build and test
         working-directory: backend
         run: ./gradlew clean build --no-daemon
+
+      - name: Publish starter to GitHub Packages
+        working-directory: backend
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: ./gradlew :oauth-oidc-client-starter:publishMavenJavaPublicationToGitHubPackagesRepository --no-daemon
 
       - name: Create or update GitHub release
         env:
