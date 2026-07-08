@@ -15,7 +15,6 @@ import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 
 class OAuthOidcClientAutoConfigurationTest {
     private final WebApplicationContextRunner contextRunner = new WebApplicationContextRunner()
@@ -24,7 +23,7 @@ class OAuthOidcClientAutoConfigurationTest {
                     DispatcherServletAutoConfiguration.class,
                     OAuthOidcClientAutoConfiguration.class
             ))
-            .withBean(StringRedisTemplate.class, () -> mock(StringRedisTemplate.class))
+            .withBean(StringRedisTemplate.class, OAuthOidcClientAutoConfigurationTest::testRedisTemplate)
             .withPropertyValues(
                     "oauth-oidc-client.authorization-endpoint=http://localhost:9001/oauth2/authorize",
                     "oauth-oidc-client.token-endpoint=http://localhost:9001/oauth2/token",
@@ -69,7 +68,7 @@ class OAuthOidcClientAutoConfigurationTest {
                 .run(context -> assertThat(context)
                         .hasFailed()
                         .getFailure()
-                        .hasMessageContaining("same-site=None requires secure-cookie=true"));
+                        .hasStackTraceContaining("same-site=None requires secure-cookie=true"));
     }
 
     @Test
@@ -79,7 +78,15 @@ class OAuthOidcClientAutoConfigurationTest {
                 .run(context -> assertThat(context)
                         .hasFailed()
                         .getFailure()
-                        .hasMessageContaining("allowed-redirect-hosts must contain host[:port] values"));
+                        .hasStackTraceContaining("allowed-redirect-hosts must contain host[:port] values"));
+    }
+
+    private static StringRedisTemplate testRedisTemplate() {
+        return new StringRedisTemplate() {
+            @Override
+            public void afterPropertiesSet() {
+            }
+        };
     }
 
 }

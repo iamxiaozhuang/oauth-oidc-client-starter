@@ -6,6 +6,9 @@ plugins {
 description = 'Spring Cloud Gateway BFF service that uses oauth-oidc-client-starter.'
 
 dependencies {
+    // Default to the included project for repository development. Set
+    // -PusePublishedStarter=true after publishing/installing the starter artifact
+    // when you want this demo Gateway to consume the package like an external app.
     if (providers.gradleProperty('usePublishedStarter').map { it.toBoolean() }.getOrElse(false)) {
         implementation "io.github.oidcclient:oauth-oidc-client-starter:${version}"
     } else {

@@ -68,9 +68,11 @@ cd D:\CodexProjects\spring-gateway-oidc-client-starter\backend
 .\gradlew.bat clean build --no-daemon
 ```
 
-## Starter Dependency Usage
+## Use The Starter In Your Gateway
 
-Applications consume the starter as a normal Maven artifact:
+Applications consume the starter as a normal Maven artifact. A Gateway app also
+needs Spring Cloud Gateway WebFlux and Spring Security; the starter contributes
+the OAuth2/OIDC BFF runtime and Redis-backed stores.
 
 ```gradle
 repositories {
@@ -85,7 +87,9 @@ repositories {
 }
 
 dependencies {
-    implementation "io.github.oidcclient:oauth-oidc-client-starter:1.0.1"
+    implementation "io.github.oidcclient:oauth-oidc-client-starter:1.0.2"
+    implementation "org.springframework.cloud:spring-cloud-starter-gateway-server-webflux"
+    implementation "org.springframework.boot:spring-boot-starter-security"
 }
 ```
 
@@ -93,12 +97,85 @@ GitHub Packages requires authentication for Maven package downloads. Configure
 `gpr.user` and `gpr.key` in your Gradle properties, or set `GITHUB_ACTOR` and a
 GitHub token with `read:packages` access in the environment.
 
-For local development, publish the starter to Maven Local first:
+Minimal Gateway configuration:
+
+```yaml
+spring:
+  main:
+    web-application-type: reactive
+  data:
+    redis:
+      url: redis://localhost:6379
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: business-service
+              uri: http://localhost:8081
+              predicates:
+                - Path=/api/**
+
+oauth-oidc-client:
+  authorization-endpoint: http://localhost:9000/oauth2/authorize
+  token-endpoint: http://localhost:9000/oauth2/token
+  user-info-endpoint: http://localhost:9000/userinfo
+  client-id: oauth-oidc-client
+  client-secret: ${OAUTH_OIDC_CLIENT_SECRET}
+  callback-path: /oauth/callback
+  login-success-path: /auth/init-page
+  logout-success-path: /logout
+  allowed-redirect-hosts:
+    - localhost:5173
+  protected-path-prefixes:
+    - /api/
+  public-path-prefixes:
+    - /oauth/
+  secure-cookie: false
+  same-site: Lax
+  redis-session-ttl: 12h
+```
+
+In the current version, configure explicit provider endpoints; `issuer-uri`
+discovery is not implemented yet. `allowed-redirect-hosts` must be `host[:port]`
+values without scheme or path. The Authorization Server must separately
+register the callback URI, such as `http://localhost:5173/oauth/callback` for
+the local demo.
+
+Let the starter's Gateway `GlobalFilter` enforce the BFF session and token
+relay. The Gateway security chain should permit requests instead of trying to
+authenticate browser JWTs:
+
+```java
+@Bean
+SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
+    return http
+            .csrf(ServerHttpSecurity.CsrfSpec::disable)
+            .authorizeExchange(exchange -> exchange
+                    .pathMatchers("/oauth/**").permitAll()
+                    .anyExchange().permitAll()
+            )
+            .build();
+}
+```
+
+Frontend code should call Gateway APIs with cookies only. It must not call the
+token endpoint, store tokens, or add an `Authorization` header. Business
+services should validate the relayed access token with Spring Security Resource
+Server.
+
+For local package validation, publish the starter to Maven Local first:
 
 ```powershell
 cd D:\CodexProjects\spring-gateway-oidc-client-starter\backend
 .\gradlew.bat :oauth-oidc-client-starter:publishToMavenLocal --no-daemon
-.\gradlew.bat clean build -PusePublishedStarter=true --no-daemon
+```
+
+Then build the demo Gateway with the published artifact instead of the included
+project dependency:
+
+```powershell
+.\gradlew.bat :gateway-service:clean :gateway-service:build -PusePublishedStarter=true --no-daemon
 ```
 
 The repository's default build still uses the included starter project so a

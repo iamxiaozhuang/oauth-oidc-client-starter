@@ -2,12 +2,13 @@ import org.gradle.api.tasks.wrapper.Wrapper
 
 allprojects {
     group = 'io.github.oidcclient'
-    version = '1.0.1'
+    version = '1.0.2'
 
     ext {
         springBootVersion = '3.5.9'
         springFrameworkVersion = '6.2.15'
         springCloudGatewayVersion = '4.3.0'
+        junitPlatformVersion = '1.12.2'
     }
 
     repositories {
@@ -27,6 +28,18 @@ subprojects {
     tasks.withType(JavaCompile).configureEach {
         options.encoding = 'UTF-8'
         options.release = 21
+    }
+
+    dependencies {
+        testRuntimeOnly "org.junit.platform:junit-platform-launcher:${junitPlatformVersion}"
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+    }
+
+    tasks.withType(Javadoc).configureEach {
+        options.addBooleanOption('Xdoclint:all,-missing', true)
     }
 
     tasks.register('wrapper') {

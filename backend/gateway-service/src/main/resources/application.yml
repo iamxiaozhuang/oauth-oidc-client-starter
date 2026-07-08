@@ -20,20 +20,20 @@ spring:
                 - Path=/api/**
 
 oauth-oidc-client:
-  authorization-endpoint: http://localhost:9000/oauth2/authorize
-  token-endpoint: http://localhost:9000/oauth2/token
-  user-info-endpoint: http://localhost:9000/userinfo
-  client-id: oauth-oidc-client
-  client-secret: oauth-oidc-client-secret
+  authorization-endpoint: ${OAUTH_OIDC_AUTHORIZATION_ENDPOINT:http://localhost:9000/oauth2/authorize}
+  token-endpoint: ${OAUTH_OIDC_TOKEN_ENDPOINT:http://localhost:9000/oauth2/token}
+  user-info-endpoint: ${OAUTH_OIDC_USER_INFO_ENDPOINT:http://localhost:9000/userinfo}
+  client-id: ${OAUTH_OIDC_CLIENT_ID:oauth-oidc-client}
+  client-secret: ${OAUTH_OIDC_CLIENT_SECRET:oauth-oidc-client-secret}
   callback-path: /oauth/callback
   login-success-path: /auth/init-page
   logout-success-path: /logout
   target-param: target
   original-url-param: target
   allowed-redirect-hosts:
-    - localhost:5173
+    - ${OAUTH_OIDC_ALLOWED_REDIRECT_HOST:localhost:5173}
   protected-path-prefixes:
-    - /
+    - /api/
   public-path-prefixes:
     - /oauth/
   secure-cookie: false

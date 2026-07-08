@@ -105,9 +105,16 @@ Known gaps still on the roadmap:
 - Route-level authentication and token-relay configuration.
 - Additional audience, scope, and role authorization examples in `business-service`.
 
-## Starter Dependency
+## How To Use The Starter
 
-Use the starter from a Gateway application as a normal Maven dependency:
+Use the package in a Spring Cloud Gateway application. The Gateway remains your
+BFF host: it owns routing and security plumbing, while this starter owns
+OAuth2/OIDC PKCE login, callback, Redis-backed BFF sessions, refresh, logout,
+and access-token relay.
+
+### 1. Add Dependencies
+
+For a Gradle Gateway application:
 
 ```gradle
 repositories {
@@ -122,7 +129,9 @@ repositories {
 }
 
 dependencies {
-    implementation "io.github.oidcclient:oauth-oidc-client-starter:1.0.1"
+    implementation "io.github.oidcclient:oauth-oidc-client-starter:1.0.2"
+    implementation "org.springframework.cloud:spring-cloud-starter-gateway-server-webflux"
+    implementation "org.springframework.boot:spring-boot-starter-security"
 }
 ```
 
@@ -130,13 +139,132 @@ GitHub Packages requires authentication for Maven package downloads. Configure
 `gpr.user` and `gpr.key` in your Gradle properties, or set `GITHUB_ACTOR` and a
 GitHub token with `read:packages` access in the environment.
 
-When validating this repository against a locally published starter artifact,
-run:
+For local package validation from this repository, publish the starter to Maven
+Local first:
 
 ```powershell
 cd D:\CodexProjects\spring-gateway-oidc-client-starter\backend
 .\gradlew.bat :oauth-oidc-client-starter:publishToMavenLocal --no-daemon
-.\gradlew.bat clean build -PusePublishedStarter=true --no-daemon
+```
+
+Then build the demo Gateway with the published artifact instead of the included
+project dependency:
+
+```powershell
+.\gradlew.bat :gateway-service:clean :gateway-service:build -PusePublishedStarter=true --no-daemon
+```
+
+The default repository build still uses `project(':oauth-oidc-client-starter')`
+so a fresh clone can build without publishing first.
+
+### 2. Configure The Gateway
+
+Add Redis, Gateway routes, and `oauth-oidc-client` properties:
+
+```yaml
+spring:
+  main:
+    web-application-type: reactive
+  data:
+    redis:
+      url: redis://localhost:6379
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: business-service
+              uri: http://localhost:8081
+              predicates:
+                - Path=/api/**
+
+oauth-oidc-client:
+  authorization-endpoint: ${OAUTH_OIDC_AUTHORIZATION_ENDPOINT:http://localhost:9000/oauth2/authorize}
+  token-endpoint: ${OAUTH_OIDC_TOKEN_ENDPOINT:http://localhost:9000/oauth2/token}
+  user-info-endpoint: ${OAUTH_OIDC_USER_INFO_ENDPOINT:http://localhost:9000/userinfo}
+  client-id: ${OAUTH_OIDC_CLIENT_ID:oauth-oidc-client}
+  client-secret: ${OAUTH_OIDC_CLIENT_SECRET:oauth-oidc-client-secret}
+  callback-path: /oauth/callback
+  login-success-path: /auth/init-page
+  logout-success-path: /logout
+  target-param: target
+  original-url-param: target
+  allowed-redirect-hosts:
+    - localhost:5173
+  protected-path-prefixes:
+    - /api/
+  public-path-prefixes:
+    - /oauth/
+  secure-cookie: false
+  same-site: Lax
+  redis-session-ttl: 12h
+```
+
+Important current-version details:
+
+- Configure explicit provider endpoints. `issuer-uri` discovery is still on the roadmap.
+- `allowed-redirect-hosts` values are `host[:port]` only, without scheme or path.
+- `callback-path`, `login-success-path`, `logout-success-path`, and protected/public prefixes must be site-relative paths.
+- Use `secure-cookie: true` with HTTPS in production. `same-site: None` also requires `secure-cookie: true`.
+- The Authorization Server must register every browser-facing callback URI, for example `http://localhost:5173/oauth/callback` in the local demo.
+
+### 3. Let The Starter Enforce The BFF Session
+
+In a Gateway app, permit requests through Spring Security and let the starter's
+Gateway `GlobalFilter` decide whether a BFF session is required. This keeps the
+Gateway from trying to validate browser JWTs, because browsers should only send
+the HttpOnly session cookie.
+
+```java
+package com.example.gateway;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.web.server.SecurityWebFilterChain;
+
+@Configuration
+class GatewaySecurityConfiguration {
+    @Bean
+    SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
+        return http
+                .csrf(ServerHttpSecurity.CsrfSpec::disable)
+                .authorizeExchange(exchange -> exchange
+                        .pathMatchers("/oauth/**").permitAll()
+                        .anyExchange().permitAll()
+                )
+                .build();
+    }
+}
+```
+
+When an unauthenticated protected request arrives, the starter returns `401`
+with `X-Login-Path`. The demo frontend follows that header to `/oauth/login`.
+After callback succeeds, the starter writes the HttpOnly session cookie and
+redirects to `login-success-path?target=...`.
+
+### 4. Keep Frontend And Services On The Right Contract
+
+Frontend code should call Gateway APIs with cookies only:
+
+```ts
+await fetch('/api/current-user', {
+  credentials: 'include',
+  headers: { Accept: 'application/json' },
+});
+```
+
+It must not call the token endpoint, store tokens, or add an `Authorization`
+header. Downstream services should stay normal Spring Security Resource Servers
+and validate the access token relayed by the Gateway:
+
+```yaml
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:9000
 ```
 
 ## Local Demo
@@ -251,15 +379,19 @@ spring:
       url: redis://localhost:6379
 
 oauth-oidc-client:
-  authorization-endpoint: http://localhost:9000/oauth2/authorize
-  token-endpoint: http://localhost:9000/oauth2/token
-  user-info-endpoint: http://localhost:9000/userinfo
-  client-id: oauth-oidc-client
-  client-secret: oauth-oidc-client-secret
+  authorization-endpoint: ${OAUTH_OIDC_AUTHORIZATION_ENDPOINT:http://localhost:9000/oauth2/authorize}
+  token-endpoint: ${OAUTH_OIDC_TOKEN_ENDPOINT:http://localhost:9000/oauth2/token}
+  user-info-endpoint: ${OAUTH_OIDC_USER_INFO_ENDPOINT:http://localhost:9000/userinfo}
+  client-id: ${OAUTH_OIDC_CLIENT_ID:oauth-oidc-client}
+  client-secret: ${OAUTH_OIDC_CLIENT_SECRET:oauth-oidc-client-secret}
   callback-path: /oauth/callback
   login-success-path: /auth/init-page
   allowed-redirect-hosts:
-    - localhost:5173
+    - ${OAUTH_OIDC_ALLOWED_REDIRECT_HOST:localhost:5173}
+  protected-path-prefixes:
+    - /api/
+  public-path-prefixes:
+    - /oauth/
   secure-cookie: false
   same-site: Lax
   redis-session-ttl: 12h
