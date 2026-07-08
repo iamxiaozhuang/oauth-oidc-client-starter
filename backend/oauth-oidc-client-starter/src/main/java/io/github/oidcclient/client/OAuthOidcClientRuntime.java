@@ -55,8 +55,8 @@ public final class OAuthOidcClientRuntime {
 
         // code_verifier 从后端取出并发送到 token endpoint，浏览器全程不可见。
         TokenResponse token = authAdapter.exchangeCode(code, request.codeVerifier(), request.redirectUri());
-        validateNonce(request, token);
-        UserInfo userInfo = authAdapter.fetchUserInfo(token.accessToken());
+        Map<String, Object> idTokenClaims = validateNonce(request, token);
+        UserInfo userInfo = userInfoFromIdTokenClaims(idTokenClaims);
         BffSession session = new BffSession(
                 Pkce.randomUrlSafe(32),
                 token,
@@ -123,11 +123,26 @@ public final class OAuthOidcClientRuntime {
         }
     }
 
-    private static void validateNonce(AuthorizationRequest request, TokenResponse token) {
-        Object actualNonce = IdTokenClaims.parsePayload(token.idToken()).get("nonce");
+    private static Map<String, Object> validateNonce(AuthorizationRequest request, TokenResponse token) {
+        Map<String, Object> claims = IdTokenClaims.parsePayload(token.idToken());
+        Object actualNonce = claims.get("nonce");
         if (!Objects.equals(request.nonce(), actualNonce)) {
             throw new OAuthOidcClientException("id_token nonce does not match authorization request");
         }
+        return claims;
+    }
+
+    private static UserInfo userInfoFromIdTokenClaims(Map<String, Object> claims) {
+        return new UserInfo(
+                stringValue(claims.get("sub")),
+                stringValue(claims.get("name")),
+                stringValue(claims.get("email")),
+                Map.copyOf(claims)
+        );
+    }
+
+    private static String stringValue(Object value) {
+        return value == null ? null : String.valueOf(value);
     }
 
     private static URI initRedirectUri(AuthorizationRequest request, String targetParam) {

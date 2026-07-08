@@ -11,7 +11,4 @@ public interface AuthAdapter {
 
     // 使用 refresh token 刷新 access token，调用方负责并发控制。
     TokenResponse refreshToken(String refreshToken);
-
-    // 使用 access token 获取当前用户信息。
-    UserInfo fetchUserInfo(String accessToken);
 }

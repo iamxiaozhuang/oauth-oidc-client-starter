@@ -48,7 +48,6 @@ public class OAuthOidcClientAutoConfiguration {
         return OAuthOidcClientConfig.builder()
                 .authorizationEndpoint(properties.getAuthorizationEndpoint())
                 .tokenEndpoint(properties.getTokenEndpoint())
-                .userInfoEndpoint(properties.getUserInfoEndpoint())
                 .clientId(properties.getClientId())
                 .clientSecret(properties.getClientSecret())
                 .redirectUri(properties.getRedirectUri())
@@ -91,7 +90,7 @@ public class OAuthOidcClientAutoConfiguration {
             ObjectProvider<ObjectMapper> objectMapper,
             OAuthOidcClientProperties properties
     ) {
-        // BFF session 保存 token 和 userinfo，统一使用 Redis 以支持多实例部署。
+        // BFF session 保存 token 和 id_token 派生的用户信息，统一使用 Redis 以支持多实例部署。
         return new RedisBffSessionStore(
                 redis,
                 redisStoreObjectMapper(objectMapper),

@@ -2,7 +2,7 @@ import org.gradle.api.tasks.wrapper.Wrapper
 
 allprojects {
     group = 'io.github.oidcclient'
-    version = '1.0.2'
+    version = '1.0.3'
 
     ext {
         springBootVersion = '3.5.9'

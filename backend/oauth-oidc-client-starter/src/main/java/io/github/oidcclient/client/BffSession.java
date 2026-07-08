@@ -4,7 +4,7 @@ import java.time.Instant;
 import java.util.Objects;
 
 public final class BffSession {
-    // 随机 session id 暴露给浏览器 cookie；token 和 userInfo 只存放在后端。
+    // 随机 session id 暴露给浏览器 cookie；token 和 id_token 派生的用户信息只存放在后端。
     private final String id;
     private final TokenResponse token;
     private final UserInfo userInfo;

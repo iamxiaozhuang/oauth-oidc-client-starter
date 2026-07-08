@@ -8,7 +8,6 @@ import java.util.Objects;
 public final class OAuthOidcClientConfig {
     private final URI authorizationEndpoint;
     private final URI tokenEndpoint;
-    private final URI userInfoEndpoint;
     private final String clientId;
     private final String clientSecret;
     private final URI redirectUri;
@@ -18,7 +17,6 @@ public final class OAuthOidcClientConfig {
     private OAuthOidcClientConfig(Builder builder) {
         this.authorizationEndpoint = require(builder.authorizationEndpoint, "authorizationEndpoint");
         this.tokenEndpoint = require(builder.tokenEndpoint, "tokenEndpoint");
-        this.userInfoEndpoint = require(builder.userInfoEndpoint, "userInfoEndpoint");
         this.clientId = requireText(builder.clientId, "clientId");
         this.clientSecret = builder.clientSecret;
         this.redirectUri = builder.redirectUri;
@@ -32,10 +30,6 @@ public final class OAuthOidcClientConfig {
 
     public URI tokenEndpoint() {
         return tokenEndpoint;
-    }
-
-    public URI userInfoEndpoint() {
-        return userInfoEndpoint;
     }
 
     public String clientId() {
@@ -76,7 +70,6 @@ public final class OAuthOidcClientConfig {
     public static final class Builder {
         private URI authorizationEndpoint;
         private URI tokenEndpoint;
-        private URI userInfoEndpoint;
         private String clientId;
         private String clientSecret;
         private URI redirectUri;
@@ -90,11 +83,6 @@ public final class OAuthOidcClientConfig {
 
         public Builder tokenEndpoint(URI tokenEndpoint) {
             this.tokenEndpoint = tokenEndpoint;
-            return this;
-        }
-
-        public Builder userInfoEndpoint(URI userInfoEndpoint) {
-            this.userInfoEndpoint = userInfoEndpoint;
             return this;
         }
 

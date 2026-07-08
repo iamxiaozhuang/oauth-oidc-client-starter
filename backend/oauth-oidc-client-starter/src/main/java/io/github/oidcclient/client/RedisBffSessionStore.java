@@ -34,7 +34,7 @@ public final class RedisBffSessionStore implements BffSessionStore {
     @Override
     public void save(BffSession session) {
         Objects.requireNonNull(session, "session is required");
-        // 服务端 session 存放 token/userinfo，浏览器 cookie 只保存随机 session id。
+        // 服务端 session 存放 token 和 id_token 派生的用户信息，浏览器 cookie 只保存随机 session id。
         redis.opsForValue().set(key(session.id()), write(StoredBffSession.from(session)), timeToLive);
     }
 
@@ -92,7 +92,7 @@ public final class RedisBffSessionStore implements BffSessionStore {
             Instant createdAt,
             Instant updatedAt
     ) {
-        // Redis 中显式展开 token 和 userinfo 字段，便于长期兼容和排查。
+        // Redis 中显式展开 token 和用户信息字段，便于长期兼容和排查。
         private static StoredBffSession from(BffSession session) {
             return new StoredBffSession(
                     session.id(),

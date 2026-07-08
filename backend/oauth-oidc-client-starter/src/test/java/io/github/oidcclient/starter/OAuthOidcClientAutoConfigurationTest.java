@@ -27,7 +27,6 @@ class OAuthOidcClientAutoConfigurationTest {
             .withPropertyValues(
                     "oauth-oidc-client.authorization-endpoint=http://localhost:9001/oauth2/authorize",
                     "oauth-oidc-client.token-endpoint=http://localhost:9001/oauth2/token",
-                    "oauth-oidc-client.user-info-endpoint=http://localhost:9001/oauth2/userinfo",
                     "oauth-oidc-client.client-id=demo-client",
                     "oauth-oidc-client.client-secret=demo-secret",
                     "oauth-oidc-client.callback-path=/oauth/callback",

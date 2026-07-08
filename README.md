@@ -129,7 +129,7 @@ repositories {
 }
 
 dependencies {
-    implementation "io.github.oidcclient:oauth-oidc-client-starter:1.0.2"
+    implementation "io.github.oidcclient:oauth-oidc-client-starter:1.0.3"
     implementation "org.springframework.cloud:spring-cloud-starter-gateway-server-webflux"
     implementation "org.springframework.boot:spring-boot-starter-security"
 }
@@ -181,7 +181,6 @@ spring:
 oauth-oidc-client:
   authorization-endpoint: ${OAUTH_OIDC_AUTHORIZATION_ENDPOINT:http://localhost:9000/oauth2/authorize}
   token-endpoint: ${OAUTH_OIDC_TOKEN_ENDPOINT:http://localhost:9000/oauth2/token}
-  user-info-endpoint: ${OAUTH_OIDC_USER_INFO_ENDPOINT:http://localhost:9000/userinfo}
   client-id: ${OAUTH_OIDC_CLIENT_ID:oauth-oidc-client}
   client-secret: ${OAUTH_OIDC_CLIENT_SECRET:oauth-oidc-client-secret}
   callback-path: /oauth/callback
@@ -381,7 +380,6 @@ spring:
 oauth-oidc-client:
   authorization-endpoint: ${OAUTH_OIDC_AUTHORIZATION_ENDPOINT:http://localhost:9000/oauth2/authorize}
   token-endpoint: ${OAUTH_OIDC_TOKEN_ENDPOINT:http://localhost:9000/oauth2/token}
-  user-info-endpoint: ${OAUTH_OIDC_USER_INFO_ENDPOINT:http://localhost:9000/userinfo}
   client-id: ${OAUTH_OIDC_CLIENT_ID:oauth-oidc-client}
   client-secret: ${OAUTH_OIDC_CLIENT_SECRET:oauth-oidc-client-secret}
   callback-path: /oauth/callback

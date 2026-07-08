@@ -131,28 +131,6 @@ public final class OAuthOidcClientClient implements AuthAdapter {
         return toTokenResponse(payload);
     }
 
-    @Override
-    public UserInfo fetchUserInfo(String accessToken) {
-        if (accessToken == null || accessToken.isBlank()) {
-            throw new IllegalArgumentException("accessToken is required");
-        }
-
-        HttpRequest request = HttpRequest.newBuilder(config.userInfoEndpoint())
-                .timeout(requestTimeout)
-                .header("Accept", "application/json")
-                .header("Authorization", "Bearer " + accessToken)
-                .GET()
-                .build();
-
-        Map<String, Object> payload = sendJson(request, "userinfo request failed");
-        return new UserInfo(
-                stringValue(payload.get("sub")),
-                stringValue(payload.get("name")),
-                stringValue(payload.get("email")),
-                Map.copyOf(payload)
-        );
-    }
-
     private Map<String, Object> sendJson(HttpRequest request, String failureMessage) {
         try {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());

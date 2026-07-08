@@ -69,7 +69,6 @@ class OAuthOidcClientClientTest {
         return OAuthOidcClientConfig.builder()
                 .authorizationEndpoint(URI.create("http://localhost:9000/oauth2/authorize"))
                 .tokenEndpoint(tokenEndpoint)
-                .userInfoEndpoint(URI.create("http://localhost:9000/userinfo"))
                 .clientId("oauth-oidc-client")
                 .clientSecret("oauth-oidc-client-secret")
                 .build();

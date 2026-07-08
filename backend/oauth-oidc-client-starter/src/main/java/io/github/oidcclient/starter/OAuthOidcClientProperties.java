@@ -25,9 +25,6 @@ public class OAuthOidcClientProperties {
     // OAuth2/OIDC provider 的 token 端点，只有后端会调用。
     @NotNull
     private URI tokenEndpoint;
-    // OIDC userinfo 端点，用于把 access token 换成当前用户 claims。
-    @NotNull
-    private URI userInfoEndpoint;
     @NotBlank
     private String clientId;
     // confidential client 可配置 client secret；它只应存在于后端配置中。
@@ -122,14 +119,6 @@ public class OAuthOidcClientProperties {
 
     public void setTokenEndpoint(URI tokenEndpoint) {
         this.tokenEndpoint = tokenEndpoint;
-    }
-
-    public URI getUserInfoEndpoint() {
-        return userInfoEndpoint;
-    }
-
-    public void setUserInfoEndpoint(URI userInfoEndpoint) {
-        this.userInfoEndpoint = userInfoEndpoint;
     }
 
     public String getClientId() {
@@ -356,11 +345,6 @@ public class OAuthOidcClientProperties {
     @AssertTrue(message = "token-endpoint must be an absolute http(s) URI")
     public boolean isTokenEndpointValid() {
         return isHttpUri(tokenEndpoint);
-    }
-
-    @AssertTrue(message = "user-info-endpoint must be an absolute http(s) URI")
-    public boolean isUserInfoEndpointValid() {
-        return isHttpUri(userInfoEndpoint);
     }
 
     @AssertTrue(message = "redirect-uri must be empty or an absolute http(s) URI")

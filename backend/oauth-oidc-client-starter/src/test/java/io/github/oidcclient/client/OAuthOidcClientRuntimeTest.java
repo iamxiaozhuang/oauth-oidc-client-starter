@@ -122,6 +122,7 @@ class OAuthOidcClientRuntimeTest {
 
         assertThat(result.initRedirectUri().toString())
                 .isEqualTo("https://app-a.example.com/auth/init-page?target=%2Fdashboard%3Ftab%3Dhome");
+        assertThat(result.session().currentUserId()).isEqualTo("user-1");
     }
 
     @Test
@@ -216,10 +217,6 @@ class OAuthOidcClientRuntimeTest {
             return token("new-access-token", "new-refresh-token", Instant.now().plusSeconds(600));
         }
 
-        @Override
-        public UserInfo fetchUserInfo(String accessToken) {
-            return new UserInfo("user-1", "Demo User", "user@example.com", Map.of("sub", "user-1"));
-        }
     }
 
     private static final class BlockingAuthAdapter implements AuthAdapter {
@@ -250,10 +247,6 @@ class OAuthOidcClientRuntimeTest {
             return token("new-access-token", "new-refresh-token", Instant.now().plusSeconds(600));
         }
 
-        @Override
-        public UserInfo fetchUserInfo(String accessToken) {
-            throw new UnsupportedOperationException("not used");
-        }
     }
 
     private static String idToken(String nonce) {
