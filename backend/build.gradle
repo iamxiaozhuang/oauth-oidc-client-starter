@@ -14,6 +14,14 @@ allprojects {
     repositories {
         mavenLocal()
         mavenCentral()
+        maven {
+            name = 'GitHubPackages'
+            url = uri('https://maven.pkg.github.com/iamxiaozhuang/oauth-oidc-client-starter')
+            credentials {
+                username = findProperty('gpr.user') ?: System.getenv('GITHUB_ACTOR') ?: System.getenv('GITHUB_USERNAME')
+                password = findProperty('gpr.key') ?: System.getenv('GITHUB_TOKEN') ?: System.getenv('GITHUB_PACKAGES_TOKEN')
+            }
+        }
     }
 }
 

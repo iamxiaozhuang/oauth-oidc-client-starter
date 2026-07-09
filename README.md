@@ -1,5 +1,7 @@
 # Spring Gateway OAuth2/OIDC Client Starter
 
+**Language:** [English](README.md) | [简体中文](README.zh-CN.md)
+
 A Spring Cloud Gateway BFF starter that moves OAuth2/OIDC PKCE login, token management, refresh, logout, and access-token relay from the browser into the backend Gateway.
 
 This project is not an OAuth server, IAM platform, user center, RBAC system, or frontend OAuth SDK. It is a reusable Spring Boot starter for the Gateway side of an OAuth2/OIDC BFF architecture.
