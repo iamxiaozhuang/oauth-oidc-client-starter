@@ -1,7 +1,7 @@
 import React from 'react';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { RefreshCw, ShieldCheck } from 'lucide-react';
+import { LogIn, LogOut, RefreshCw, ShieldCheck } from 'lucide-react';
 import './styles.css';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '';
@@ -10,6 +10,16 @@ type CurrentUserResponse = {
   userId: string;
   claims?: Record<string, unknown>;
   scopes?: string[];
+};
+
+type LoginInitializationResponse = {
+  initialized: boolean;
+  userId: string;
+  tenant: {
+    tenantId: string;
+    tenantName: string;
+  };
+  permissions: string[];
 };
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -45,8 +55,8 @@ function redirectToLogin(loginPath?: string) {
   window.location.replace(`/oauth/login?target=${encodeURIComponent(target)}`);
 }
 
-function LoginInitPage() {
-  const [message, setMessage] = React.useState('正在登录，请稍候');
+function LoginPage() {
+  const [message, setMessage] = React.useState('正在初始化租户与权限信息，请稍候');
 
   React.useEffect(() => {
     let cancelled = false;
@@ -55,11 +65,14 @@ function LoginInitPage() {
 
     async function initializeLogin() {
       try {
-        await fetchJson<Record<string, unknown>>(`${API_BASE_URL}/api/auth/init`, {
+        const initialization = await fetchJson<LoginInitializationResponse>(`${API_BASE_URL}/api/login`, {
           method: 'POST',
         });
+        if (!initialization.initialized) {
+          throw new Error('登录初始化未完成');
+        }
         if (!cancelled) {
-          setMessage('登录成功，正在进入系统');
+          setMessage(`${initialization.tenant.tenantName}及权限初始化完成，正在进入系统`);
           window.location.replace(target);
         }
       } catch {
@@ -77,9 +90,30 @@ function LoginInitPage() {
 
   return (
     <main className="shell">
-      <section className="status-panel">
+      <section className="status-panel status-panel-stacked">
         <RefreshCw className="spin" aria-hidden="true" />
-        <p>{message}</p>
+        <div>
+          <h1 className="status-title">正在登录系统</h1>
+          <p>{message}</p>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function LogoutPage() {
+  return (
+    <main className="shell">
+      <section className="status-panel status-panel-stacked">
+        <ShieldCheck aria-hidden="true" />
+        <div>
+          <h1 className="status-title">已安全退出</h1>
+          <p>Gateway 已删除 Redis 中的 BFF session，并清除了浏览器 Cookie。</p>
+        </div>
+        <a className="action-link" href="/oauth/login?target=%2F">
+          <LogIn aria-hidden="true" />
+          重新登录
+        </a>
       </section>
     </main>
   );
@@ -138,6 +172,10 @@ function App() {
           <span className="eyebrow">React + Spring Security Demo</span>
           <h1>OAuth2 BFF PKCE</h1>
         </div>
+        <a className="action-link action-link-secondary" href="/api/logout">
+          <LogOut aria-hidden="true" />
+          退出登录
+        </a>
       </header>
 
       <section className="workspace">
@@ -161,6 +199,12 @@ function App() {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {window.location.pathname === '/auth/init-page' ? <LoginInitPage /> : <App />}
+    {window.location.pathname === '/login-page' ? (
+      <LoginPage />
+    ) : window.location.pathname === '/logout-page' ? (
+      <LogoutPage />
+    ) : (
+      <App />
+    )}
   </StrictMode>,
 );

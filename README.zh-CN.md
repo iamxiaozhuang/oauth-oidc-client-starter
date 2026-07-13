@@ -29,14 +29,17 @@ sequenceDiagram
     G->>A: 使用 code + verifier 换取 token
     A-->>G: access / refresh / ID token
     G->>R: 创建 BFF session，服务端保存 token
-    G-->>U: 写入 HttpOnly Cookie，跳转 /auth/init-page
-    F->>G: POST /api/auth/init（携带 Cookie）
+    G-->>U: 写入 HttpOnly Cookie，跳转 /login-page
+    F->>G: POST /api/login（初始化租户与权限）
     G->>B: Authorization: Bearer access_token
-    B-->>F: 初始化完成
+    B-->>F: 返回租户信息和权限列表
     F->>G: 回到原页面并请求业务 API
     G->>R: 读取 session，必要时刷新 token
     G->>B: 转发请求并注入 access token
     B-->>F: 返回已认证的业务数据
+    U->>G: GET /api/logout（携带 Cookie）
+    G->>R: 删除 BFF session
+    G-->>U: 清除 Cookie，302 跳转 /logout-page
 ```
 
 浏览器始终只持有随机 session ID。登录上下文、token 和刷新锁都保存在 Gateway 服务端与 Redis 中；业务服务只接收并验证 access token。
@@ -64,12 +67,12 @@ backend/
 
 | 模块 | 作用 |
 | --- | --- |
-| `frontend` | 展示页面、通过 Cookie 调用 Gateway API，并根据 `X-Login-Path` 自动进入登录流程。 |
+| `frontend` | 提供业务首页、`/login-page` 登录初始化页和 `/logout-page` 退出成功页，通过 Cookie 调用 Gateway API。 |
 | `gateway-service` | Starter 的运行宿主，配置浏览器入口、下游路由和 OIDC 参数。 |
 | `oauth-oidc-client-starter` | 实现 PKCE 登录、callback 校验、BFF session、token 刷新、退出和 token relay。 |
 | `Redis` | 保存一次性授权请求、BFF session、token 信息和分布式刷新锁。 |
 | `auth-service` | 本地 OIDC Provider，负责用户登录、签发和刷新 token。 |
-| `business-service` | Spring Security Resource Server，验证 access token 并提供业务 API。 |
+| `business-service` | Spring Security Resource Server，验证 access token，并通过 `/api/login` 初始化示例租户与业务权限。 |
 
 ## 标准使用方式
 
@@ -120,9 +123,14 @@ oauth-oidc-client:
   token-endpoint: https://id.example.com/oauth2/token
   client-id: gateway-client
   client-secret: ${OAUTH_OIDC_CLIENT_SECRET}
+  scopes:
+    - openid
+    - profile
+    - email
+    - business.read
   callback-path: /oauth/callback
-  login-success-path: /auth/init-page
-  logout-success-path: /logout
+  login-success-path: /login-page
+  logout-success-path: /logout-page
   allowed-redirect-hosts:
     - app.example.com
   protected-path-prefixes:
@@ -145,6 +153,7 @@ oauth-oidc-client:
 | `authorization-endpoint` | Gateway 发起登录时跳转的授权地址。 |
 | `token-endpoint` | Gateway 使用 authorization code 换取或刷新 token 的地址。 |
 | `client-id` / `client-secret` | Gateway 在 OIDC Provider 中注册的客户端身份。 |
+| `scopes` | 登录时申请的 OIDC scope 和业务 API scope；示例使用 `business.read` 初始化业务权限。 |
 | `callback-path` | OIDC Provider 登录完成后返回 Gateway 的路径。 |
 | `login-success-path` | callback 成功后进入的初始化页面。 |
 | `logout-success-path` | 清理 Cookie 和服务端 session 后的跳转路径。 |
@@ -208,6 +217,8 @@ npm run dev
 ```
 
 打开 `http://localhost:5173`，使用 `user` / `password` 登录。
+
+登录 callback 成功后会按照 `login-success-path` 进入 `/login-page`。页面显示“正在登录系统”，调用 `/api/login` 获取租户信息和权限列表，初始化成功后才返回登录前页面。点击“退出登录”会调用 `/api/logout`，验证 Gateway 删除服务端 session、清除 Cookie 并按照 `logout-success-path` 跳转 `/logout-page`。
 
 | 服务 | 地址 |
 | --- | --- |

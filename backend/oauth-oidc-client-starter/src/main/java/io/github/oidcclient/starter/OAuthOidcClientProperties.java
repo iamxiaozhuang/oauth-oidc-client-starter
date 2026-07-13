@@ -36,10 +36,10 @@ public class OAuthOidcClientProperties {
     private String callbackPath = "/oauth/callback";
     // 登录成功后先跳初始化页面，由页面调用业务初始化接口，再回到 target。
     @NotBlank
-    private String loginSuccessPath = "/";
+    private String loginSuccessPath = "/login-page";
     // 注销成功后跳转到业务系统自己的退出完成页。
     @NotBlank
-    private String logoutSuccessPath = "/logout";
+    private String logoutSuccessPath = "/logout-page";
     @NotBlank
     @Pattern(regexp = "[A-Za-z0-9._~-]+")
     private String targetParam = "target";

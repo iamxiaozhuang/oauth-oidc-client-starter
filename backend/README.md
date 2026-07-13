@@ -121,9 +121,14 @@ oauth-oidc-client:
   token-endpoint: http://localhost:9000/oauth2/token
   client-id: oauth-oidc-client
   client-secret: ${OAUTH_OIDC_CLIENT_SECRET}
+  scopes:
+    - openid
+    - profile
+    - email
+    - business.read
   callback-path: /oauth/callback
-  login-success-path: /auth/init-page
-  logout-success-path: /logout
+  login-success-path: /login-page
+  logout-success-path: /logout-page
   allowed-redirect-hosts:
     - localhost:5173
   protected-path-prefixes:

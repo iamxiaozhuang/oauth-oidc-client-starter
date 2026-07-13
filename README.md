@@ -29,14 +29,17 @@ sequenceDiagram
     G->>A: Exchange code + verifier for tokens
     A-->>G: Access, refresh, and ID tokens
     G->>R: Create BFF session and store tokens
-    G-->>U: Set HttpOnly cookie and redirect to /auth/init-page
-    F->>G: POST /api/auth/init with cookie
+    G-->>U: Set HttpOnly cookie and redirect to /login-page
+    F->>G: POST /api/login for tenant and permissions
     G->>B: Authorization: Bearer access_token
-    B-->>F: Initialization complete
+    B-->>F: Return tenant and permission data
     F->>G: Return to target and request an API
     G->>R: Load session and refresh token when needed
     G->>B: Relay request with access token
     B-->>F: Return authenticated business data
+    U->>G: GET /api/logout with cookie
+    G->>R: Delete BFF session
+    G-->>U: Clear cookie and redirect to /logout-page
 ```
 
 The browser holds only a random session ID. Login context, tokens, and refresh locks stay in the Gateway and Redis; business services receive and validate only the access token.
@@ -64,12 +67,12 @@ backend/
 
 | Component | Responsibility |
 | --- | --- |
-| `frontend` | Renders the UI, calls Gateway APIs with cookies, and follows `X-Login-Path` to start login. |
+| `frontend` | Provides the application home page, `/login-page` login initialization page, and `/logout-page` success page; calls Gateway APIs with cookies. |
 | `gateway-service` | Hosts the starter and configures browser entry points, downstream routes, and OIDC settings. |
 | `oauth-oidc-client-starter` | Implements PKCE login, callback validation, BFF sessions, refresh, logout, and token relay. |
 | `Redis` | Stores one-time authorization requests, BFF sessions, token data, and distributed refresh locks. |
 | `auth-service` | Local OIDC Provider that authenticates users and issues or refreshes tokens. |
-| `business-service` | Spring Security Resource Server that validates access tokens and serves business APIs. |
+| `business-service` | Spring Security Resource Server that validates access tokens and initializes demo tenant and permission data through `/api/login`. |
 
 ## Use in a Gateway
 
@@ -120,9 +123,14 @@ oauth-oidc-client:
   token-endpoint: https://id.example.com/oauth2/token
   client-id: gateway-client
   client-secret: ${OAUTH_OIDC_CLIENT_SECRET}
+  scopes:
+    - openid
+    - profile
+    - email
+    - business.read
   callback-path: /oauth/callback
-  login-success-path: /auth/init-page
-  logout-success-path: /logout
+  login-success-path: /login-page
+  logout-success-path: /logout-page
   allowed-redirect-hosts:
     - app.example.com
   protected-path-prefixes:
@@ -145,6 +153,7 @@ Register `https://app.example.com/oauth/callback` with the OIDC provider. The cu
 | `authorization-endpoint` | Authorization URL used to start login. |
 | `token-endpoint` | URL used to exchange the authorization code and refresh tokens. |
 | `client-id` / `client-secret` | Gateway client credentials registered with the OIDC Provider. |
+| `scopes` | OIDC and business API scopes requested at login; the demo maps `business.read` into a business permission. |
 | `callback-path` | Gateway path to which the OIDC Provider returns the browser. |
 | `login-success-path` | Initialization page opened after a successful callback. |
 | `logout-success-path` | Destination after clearing the cookie and server-side session. |
@@ -206,6 +215,8 @@ npm run dev
 ```
 
 Open `http://localhost:5173` and sign in with `user` / `password`.
+
+After callback, `login-success-path` opens `/login-page`. It displays a signing-in state, calls `/api/login` for tenant and permission data, and returns to the original page only after initialization succeeds. **Log out** calls `/api/logout` to verify server-side session deletion, cookie clearing, and the `logout-success-path` redirect to `/logout-page`.
 
 | Service | Address |
 | --- | --- |

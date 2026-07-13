@@ -55,7 +55,7 @@ public class OAuthOidcClientReactiveController {
         return redirect(result.initRedirectUri());
     }
 
-    @GetMapping("/oauth/logout")
+    @GetMapping("/api/logout")
     public ResponseEntity<Void> logout(ServerHttpRequest request, ServerHttpResponse response) {
         sessionId(request).ifPresent(runtime::logout);
         ReactiveCookieSessionIdResolver.clear(response, properties);

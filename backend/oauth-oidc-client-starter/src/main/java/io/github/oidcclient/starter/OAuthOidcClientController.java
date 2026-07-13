@@ -58,7 +58,7 @@ public class OAuthOidcClientController {
         return redirect(result.initRedirectUri());
     }
 
-    @GetMapping("/oauth/logout")
+    @GetMapping("/api/logout")
     public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
         // 注销需要同时删除后端 session 和浏览器 cookie，避免留下单边状态。
         sessionId(request).ifPresent(runtime::logout);

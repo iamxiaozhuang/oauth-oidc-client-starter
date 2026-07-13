@@ -98,6 +98,23 @@ class OAuthOidcClientRuntimeTest {
     }
 
     @Test
+    void logoutDeletesBffSession() {
+        CapturingSessionStore sessions = new CapturingSessionStore(sessionWithToken(
+                token("access-token", "refresh-token", Instant.now().plusSeconds(600))
+        ));
+        OAuthOidcClientRuntime runtime = new OAuthOidcClientRuntime(
+                new CapturingAuthAdapter(),
+                new CapturingAuthorizationRequestStore(),
+                sessions,
+                Duration.ofSeconds(60)
+        );
+
+        runtime.logout("session-1");
+
+        assertThat(sessions.find("session-1")).isEmpty();
+    }
+
+    @Test
     void callbackRedirectsToOriginalOriginInitPageWithOriginalPathTarget() {
         CapturingAuthAdapter authAdapter = new CapturingAuthAdapter();
         CapturingAuthorizationRequestStore authorizationRequests = new CapturingAuthorizationRequestStore();
@@ -109,7 +126,7 @@ class OAuthOidcClientRuntimeTest {
         );
         URI redirectUri = URI.create("https://app-a.example.com/oauth/callback");
         URI originalOrigin = URI.create("https://app-a.example.com");
-        URI initPageUri = URI.create("https://app-a.example.com/auth/init-page");
+        URI initPageUri = URI.create("https://app-a.example.com/login-page");
 
         runtime.beginLogin(redirectUri, originalOrigin, "/dashboard?tab=home", initPageUri);
         OAuthOidcClientCallbackResult result = runtime.completeCallback(
@@ -121,7 +138,7 @@ class OAuthOidcClientRuntimeTest {
         );
 
         assertThat(result.initRedirectUri().toString())
-                .isEqualTo("https://app-a.example.com/auth/init-page?target=%2Fdashboard%3Ftab%3Dhome");
+                .isEqualTo("https://app-a.example.com/login-page?target=%2Fdashboard%3Ftab%3Dhome");
         assertThat(result.session().currentUserId()).isEqualTo("user-1");
     }
 
@@ -143,7 +160,7 @@ class OAuthOidcClientRuntimeTest {
                 redirectUri,
                 originalOrigin,
                 "/dashboard",
-                URI.create("https://app-a.example.com/auth/init-page")
+                URI.create("https://app-a.example.com/login-page")
         );
 
         assertThatThrownBy(() -> runtime.completeCallback("code", "state", redirectUri, originalOrigin, "target"))

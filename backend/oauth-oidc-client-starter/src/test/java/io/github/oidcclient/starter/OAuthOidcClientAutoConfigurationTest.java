@@ -30,7 +30,7 @@ class OAuthOidcClientAutoConfigurationTest {
                     "oauth-oidc-client.client-id=demo-client",
                     "oauth-oidc-client.client-secret=demo-secret",
                     "oauth-oidc-client.callback-path=/oauth/callback",
-                    "oauth-oidc-client.login-success-path=/auth/init-page",
+                    "oauth-oidc-client.login-success-path=/login-page",
                     "oauth-oidc-client.redis-session-ttl=12h",
                     "oauth-oidc-client.allowed-redirect-hosts=localhost:5173"
             );

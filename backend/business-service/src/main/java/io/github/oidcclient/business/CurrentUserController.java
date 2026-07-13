@@ -11,6 +11,12 @@ import java.util.Map;
 
 @RestController
 public class CurrentUserController {
+    private final LoginInitializationService loginInitializationService;
+
+    public CurrentUserController(LoginInitializationService loginInitializationService) {
+        this.loginInitializationService = loginInitializationService;
+    }
+
     @GetMapping("/api/current-user")
     public Map<String, Object> currentUser(Authentication authentication) {
         Map<String, Object> body = new LinkedHashMap<>();
@@ -25,10 +31,8 @@ public class CurrentUserController {
         return body;
     }
 
-    @PostMapping("/api/auth/init")
-    public Map<String, Object> initCurrentUser(Authentication authentication) {
-        Map<String, Object> body = currentUser(authentication);
-        body.put("initialized", true);
-        return body;
+    @PostMapping("/api/login")
+    public LoginInitializationService.LoginInitializationResult initCurrentUser(Authentication authentication) {
+        return loginInitializationService.initialize(authentication);
     }
 }

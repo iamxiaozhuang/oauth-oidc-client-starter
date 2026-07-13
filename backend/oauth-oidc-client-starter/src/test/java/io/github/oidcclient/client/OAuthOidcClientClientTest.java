@@ -54,7 +54,7 @@ class OAuthOidcClientClientTest {
                 URI.create("https://app.example.test/oauth/callback"),
                 URI.create("https://app.example.test"),
                 "/dashboard",
-                URI.create("https://app.example.test/auth/init-page")
+                URI.create("https://app.example.test/login-page")
         );
 
         assertThat(request.nonce()).isNotBlank();

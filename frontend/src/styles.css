@@ -20,6 +20,10 @@ button {
   font: inherit;
 }
 
+a {
+  color: inherit;
+}
+
 .shell {
   width: min(920px, calc(100vw - 32px));
   margin: 0 auto;
@@ -71,6 +75,48 @@ h1 {
   color: #49627d;
 }
 
+.status-panel-stacked {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.status-title {
+  margin-bottom: 10px;
+  font-size: clamp(28px, 5vw, 42px);
+}
+
+.action-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #b8c7d9;
+  border-radius: 8px;
+  padding: 10px 14px;
+  background: #ffffff;
+  color: #29415c;
+  text-decoration: none;
+}
+
+.action-link:hover {
+  border-color: #5b7592;
+  background: #f1f6fc;
+}
+
+.action-link {
+  border-color: #274d75;
+  background: #274d75;
+  color: #ffffff;
+}
+
+.action-link-secondary {
+  flex: 0 0 auto;
+}
+
+.action-link svg {
+  width: 18px;
+  height: 18px;
+}
+
 .identity-strip {
   display: flex;
   align-items: center;
@@ -120,5 +166,12 @@ h1 {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

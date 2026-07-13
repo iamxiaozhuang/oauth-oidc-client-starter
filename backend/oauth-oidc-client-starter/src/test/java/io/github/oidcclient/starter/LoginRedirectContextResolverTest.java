@@ -22,7 +22,7 @@ class LoginRedirectContextResolverTest {
         assertThat(context.originalOrigin().toString()).isEqualTo("https://app-a.example.com");
         assertThat(context.originalPath()).isEqualTo("/dashboard?tab=member");
         assertThat(context.redirectUri().toString()).isEqualTo("https://app-a.example.com/oauth/callback");
-        assertThat(context.initPageUri().toString()).isEqualTo("https://app-a.example.com/auth/init-page");
+        assertThat(context.initPageUri().toString()).isEqualTo("https://app-a.example.com/login-page");
     }
 
     @Test
@@ -43,7 +43,7 @@ class LoginRedirectContextResolverTest {
         OAuthOidcClientProperties properties = new OAuthOidcClientProperties();
         properties.setAllowedRedirectHosts(java.util.List.of("app-a.example.com"));
         properties.setCallbackPath("/oauth/callback");
-        properties.setLoginSuccessPath("/auth/init-page");
+        properties.setLoginSuccessPath("/login-page");
         return properties;
     }
 }
