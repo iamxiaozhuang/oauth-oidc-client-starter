@@ -4,11 +4,42 @@
 
 一个让 Spring Cloud Gateway 具备 OAuth2/OIDC BFF 能力的 Spring Boot Starter。它统一处理 Authorization Code + PKCE 登录、服务端会话、token 刷新、退出登录和 access token 透传，让前端只需要使用 HttpOnly Cookie。
 
-```text
-Browser -- HttpOnly Cookie --> Spring Cloud Gateway BFF
-                                  |
-                                  +-- Bearer access token --> Resource Server
+## 架构与登录流程
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as 用户 / Browser
+    participant F as frontend
+    participant G as gateway-service + starter
+    participant R as Redis
+    participant A as auth-service / OIDC Provider
+    participant B as business-service
+
+    U->>F: 打开业务页面
+    F->>G: GET /api/current-user（仅携带 Cookie）
+    G-->>F: 401 + X-Login-Path（尚未登录）
+    F->>G: GET /oauth/login?target=原页面
+    G->>R: 保存 state、nonce、PKCE verifier 和原页面
+    G-->>U: 302 跳转 OIDC Provider
+    U->>A: 登录并授权
+    A-->>U: 302 /oauth/callback?code&state
+    U->>G: 携带 code 和 state 访问 callback
+    G->>R: 一次性消费 state 并恢复 PKCE verifier
+    G->>A: 使用 code + verifier 换取 token
+    A-->>G: access / refresh / ID token
+    G->>R: 创建 BFF session，服务端保存 token
+    G-->>U: 写入 HttpOnly Cookie，跳转 /auth/init-page
+    F->>G: POST /api/auth/init（携带 Cookie）
+    G->>B: Authorization: Bearer access_token
+    B-->>F: 初始化完成
+    F->>G: 回到原页面并请求业务 API
+    G->>R: 读取 session，必要时刷新 token
+    G->>B: 转发请求并注入 access token
+    B-->>F: 返回已认证的业务数据
 ```
+
+浏览器始终只持有随机 session ID。登录上下文、token 和刷新锁都保存在 Gateway 服务端与 Redis 中；业务服务只接收并验证 access token。
 
 ## 核心优势
 
@@ -30,6 +61,15 @@ backend/
   oauth-oidc-client-starter/           可复用 Starter
   business-service/                    Resource Server 示例
 ```
+
+| 模块 | 作用 |
+| --- | --- |
+| `frontend` | 展示页面、通过 Cookie 调用 Gateway API，并根据 `X-Login-Path` 自动进入登录流程。 |
+| `gateway-service` | Starter 的运行宿主，配置浏览器入口、下游路由和 OIDC 参数。 |
+| `oauth-oidc-client-starter` | 实现 PKCE 登录、callback 校验、BFF session、token 刷新、退出和 token relay。 |
+| `Redis` | 保存一次性授权请求、BFF session、token 信息和分布式刷新锁。 |
+| `auth-service` | 本地 OIDC Provider，负责用户登录、签发和刷新 token。 |
+| `business-service` | Spring Security Resource Server，验证 access token 并提供业务 API。 |
 
 ## 标准使用方式
 
@@ -95,6 +135,24 @@ oauth-oidc-client:
 ```
 
 在 OIDC Provider 中注册 `https://app.example.com/oauth/callback`。当前版本使用显式配置的 authorization endpoint 和 token endpoint。
+
+### 配置项说明
+
+| 配置 | 作用 |
+| --- | --- |
+| `spring.data.redis.url` | Gateway 使用的 Redis 地址。 |
+| `spring.cloud.gateway...routes` | 把浏览器 API 请求转发到对应业务服务。 |
+| `authorization-endpoint` | Gateway 发起登录时跳转的授权地址。 |
+| `token-endpoint` | Gateway 使用 authorization code 换取或刷新 token 的地址。 |
+| `client-id` / `client-secret` | Gateway 在 OIDC Provider 中注册的客户端身份。 |
+| `callback-path` | OIDC Provider 登录完成后返回 Gateway 的路径。 |
+| `login-success-path` | callback 成功后进入的初始化页面。 |
+| `logout-success-path` | 清理 Cookie 和服务端 session 后的跳转路径。 |
+| `allowed-redirect-hosts` | 允许承载 callback 的浏览器入口域名白名单。 |
+| `protected-path-prefixes` | 需要 BFF session 并自动透传 access token 的路径。 |
+| `public-path-prefixes` | 可匿名访问的路径，例如登录和 callback。 |
+| `secure-cookie` / `same-site` | 控制浏览器 session Cookie 的 HTTPS 与跨站策略。 |
+| `redis-session-ttl` | BFF session 在 Redis 中的有效期。 |
 
 ### 3. 按 BFF 契约调用
 

@@ -4,11 +4,42 @@
 
 A Spring Boot starter that turns Spring Cloud Gateway into an OAuth2/OIDC BFF. It handles Authorization Code + PKCE login, server-side sessions, token refresh, logout, and access-token relay so the frontend only works with an HttpOnly cookie.
 
-```text
-Browser -- HttpOnly cookie --> Spring Cloud Gateway BFF
-                                  |
-                                  +-- Bearer access token --> Resource Server
+## Architecture and Login Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as User / Browser
+    participant F as frontend
+    participant G as gateway-service + starter
+    participant R as Redis
+    participant A as auth-service / OIDC Provider
+    participant B as business-service
+
+    U->>F: Open an application page
+    F->>G: GET /api/current-user (cookie only)
+    G-->>F: 401 + X-Login-Path (no session)
+    F->>G: GET /oauth/login?target=original page
+    G->>R: Store state, nonce, PKCE verifier, and target
+    G-->>U: 302 redirect to OIDC Provider
+    U->>A: Sign in and authorize
+    A-->>U: 302 /oauth/callback?code&state
+    U->>G: Send code and state to callback
+    G->>R: Consume state once and restore PKCE verifier
+    G->>A: Exchange code + verifier for tokens
+    A-->>G: Access, refresh, and ID tokens
+    G->>R: Create BFF session and store tokens
+    G-->>U: Set HttpOnly cookie and redirect to /auth/init-page
+    F->>G: POST /api/auth/init with cookie
+    G->>B: Authorization: Bearer access_token
+    B-->>F: Initialization complete
+    F->>G: Return to target and request an API
+    G->>R: Load session and refresh token when needed
+    G->>B: Relay request with access token
+    B-->>F: Return authenticated business data
 ```
+
+The browser holds only a random session ID. Login context, tokens, and refresh locks stay in the Gateway and Redis; business services receive and validate only the access token.
 
 ## Highlights
 
@@ -30,6 +61,15 @@ backend/
   oauth-oidc-client-starter/           Reusable starter
   business-service/                    Resource Server demo
 ```
+
+| Component | Responsibility |
+| --- | --- |
+| `frontend` | Renders the UI, calls Gateway APIs with cookies, and follows `X-Login-Path` to start login. |
+| `gateway-service` | Hosts the starter and configures browser entry points, downstream routes, and OIDC settings. |
+| `oauth-oidc-client-starter` | Implements PKCE login, callback validation, BFF sessions, refresh, logout, and token relay. |
+| `Redis` | Stores one-time authorization requests, BFF sessions, token data, and distributed refresh locks. |
+| `auth-service` | Local OIDC Provider that authenticates users and issues or refreshes tokens. |
+| `business-service` | Spring Security Resource Server that validates access tokens and serves business APIs. |
 
 ## Use in a Gateway
 
@@ -95,6 +135,24 @@ oauth-oidc-client:
 ```
 
 Register `https://app.example.com/oauth/callback` with the OIDC provider. The current release uses explicit authorization and token endpoints.
+
+### Configuration Reference
+
+| Property | Purpose |
+| --- | --- |
+| `spring.data.redis.url` | Redis connection used by the Gateway. |
+| `spring.cloud.gateway...routes` | Routes browser API requests to downstream services. |
+| `authorization-endpoint` | Authorization URL used to start login. |
+| `token-endpoint` | URL used to exchange the authorization code and refresh tokens. |
+| `client-id` / `client-secret` | Gateway client credentials registered with the OIDC Provider. |
+| `callback-path` | Gateway path to which the OIDC Provider returns the browser. |
+| `login-success-path` | Initialization page opened after a successful callback. |
+| `logout-success-path` | Destination after clearing the cookie and server-side session. |
+| `allowed-redirect-hosts` | Allowlist of browser-facing hosts that may receive callbacks. |
+| `protected-path-prefixes` | Paths that require a BFF session and receive token relay. |
+| `public-path-prefixes` | Anonymous paths such as login and callback endpoints. |
+| `secure-cookie` / `same-site` | HTTPS and cross-site behavior of the session cookie. |
+| `redis-session-ttl` | Lifetime of a BFF session in Redis. |
 
 ### 3. Use the BFF contract
 
